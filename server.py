@@ -138,11 +138,15 @@ class CASRequestHandler(BaseHTTPRequestHandler):
             is_saml = True
         value = self.headers['Authorization'] or ''
         if not value.startswith('Basic '):
-            self.send_error(403, 'Forbidden')
+            self.send_response(401, 'Unauthorized')
+            self.send_header('WWW-Authenticate', 'Basic')
+            self.end_headers()
             return
         credentials = b64decode(value[6:]).decode('utf-8').split(':')
         if credentials[1] != self.server.secret:
-            self.send_error(403, 'Forbidden')
+            self.send_response(401, 'Unauthorized')
+            self.send_header('WWW-Authenticate', 'Basic')
+            self.end_headers()
             return
         ticket = self.server.generate_ticket(service, credentials[0])
         self.send_response(302, 'Found')
@@ -228,9 +232,17 @@ class CASRequestHandler(BaseHTTPRequestHandler):
             self.querystring = ''
         try:
             handler = getattr(self, self.cas_uri)
+            handler()
         except AttributeError:
-            self.send_error(404, "Not Found")
-        handler()
+            if self.cas_uri == '':
+                response = "mockCAS is working!"
+                self.send_response(200)
+                self.send_header('Content-Type', 'text/html')
+                self.send_header('Content-Length', len(response))
+                self.end_headers()
+                self.wfile.write(response.encode('utf-8'))
+            else:
+                self.send_error(404, "Not Found")
 
     def do_POST(self):
         """Handle POST requests by dispatching to a specific protocol URI handler by examining path."""
