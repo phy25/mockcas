@@ -7,6 +7,7 @@ from functools import lru_cache
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from urllib.parse import parse_qs
 import xml.etree.ElementTree as ET
+import ssl
 
 """Number of entries in LRU cache that stores user data."""
 CACHESIZE = 10000
@@ -64,16 +65,20 @@ class CASProtocolError(Exception):
 class CASServer(HTTPServer):
     """Mock CAS server that implements the CAS protocol on address:port."""
 
-    def __init__(self, server_address, secret, data_dir, handler_class):
+    def __init__(self, server_address, secret, data_dir, certfile, handler_class):
         super(CASServer, self).__init__(server_address, handler_class)
         self.secret = secret
         self.data_dir = data_dir
+        self.certfile = certfile
         self._ticket_map = {}
 
     def serve_forever(self, poll_interval=0.5):
         """Starts the web server listening on address:port."""
-        print("Starting CAS server on", self.server_address,
+        print("Starting CAS server on", ("https://" if self.certfile else "http://") + self.server_address[0] + ':' + str(self.server_address[1]),
               "and serving content from", self.data_dir, file=sys.stderr)
+        if self.certfile:
+            self.socket = ssl.wrap_socket(self.socket, certfile=self.certfile, server_side=True)
+
         try:
             HTTPServer.serve_forever(self, poll_interval)
         except KeyboardInterrupt:
@@ -251,10 +256,12 @@ if __name__ == '__main__':
                         help='server bind address, 0.0.0.0 by default')
     parser.add_argument('--port', dest='port', type=int, default=8080,
                         help='server listen port, 8080 by default')
+    parser.add_argument('--cert', dest='cert', type=str, default=None,
+                        help='certificate pem file path; if set SSL will be on, or by default the port will be plain HTTP')
     parser.add_argument('secret', type=str,
                         help='static secret used to authenticate users')
     parser.add_argument('data_dir', type=str,
                         help='path to data directory')
     args = parser.parse_args(sys.argv[1:])
-    server = CASServer((args.address, args.port), args.secret, args.data_dir, CASRequestHandler)
+    server = CASServer((args.address, args.port), args.secret, args.data_dir, args.cert, CASRequestHandler)
     server.serve_forever(1)
