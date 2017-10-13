@@ -27,15 +27,13 @@ protocols you intend to support for testing.
 The design goal of simplicity, both in implementation and configuration,
 incurs some notable limitations.
 
-1. No support for TLS
-2. Password authentication exclusively with single, static password
-3. No proxy support
-4. No single logout support
+1. Password authentication exclusively with single, static password
+2. No proxy support
+3. No single logout support
 
 ## Requirements
 The only software requirement is Python 3.2 or later. It's recommend to
-run the server on a secure private network due to the lack of TLS
-support.
+run the server on a secure private network.
 
 ## Usage
     usage: server.py [-h] [--address ADDRESS] [--port PORT] secret data_dir
@@ -50,4 +48,5 @@ support.
       -h, --help         show this help message and exit
       --address ADDRESS  server bind address, 0.0.0.0 by default
       --port PORT        server listen port, 8080 by default
-
+      --cert CERT        certificate pem file path; if set SSL will be on, or by
+                         default the port will be plain HTTP
